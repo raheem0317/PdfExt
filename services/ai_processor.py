@@ -8,7 +8,9 @@ from concurrent.futures import ThreadPoolExecutor
 def get_groq_client():
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        raise ValueError("GROQ_API_KEY environment variable is not set. Please set it before running the application.")
+        raise ValueError(
+            "GROQ_API_KEY environment variable is not set. Please set it before running the application."
+        )
     return Groq(api_key=api_key)
 
 
@@ -19,21 +21,24 @@ def clean_json_response(response_text):
 
 def analyze_chunk(chunk):
     prompt = f"""
-    Extract structured data in JSON.
+Extract structured data in JSON.
 
-    Return ONLY:
-    [{{"department":"","application":"","relationship":"","business_context":""}}]
+Return ONLY:
+[{{"department":"","application":"","relationship":"","business_context":""}}]
 
-    If none found return []
+If none found return []
 
-    Text:
-    {chunk}
-    """
+Text:
+{chunk}
+"""
 
     client = get_groq_client()
+
     response = client.chat.completions.create(
-        model="llama-3.3-70b-specdec",
-        messages=[{"role": "user", "content": prompt}],
+        model="openai/gpt-oss-120b",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
         temperature=0
     )
 
