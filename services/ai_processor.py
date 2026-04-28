@@ -21,25 +21,34 @@ def clean_json_response(response_text):
 
 def analyze_chunk(chunk):
     prompt = f"""
-Extract structured data in JSON.
+You are an expert Document Analyst. Your task is to extract relationships between Departments and Software Applications from the text below.
 
-Return ONLY:
-[{{"department":"","application":"","relationship":"","business_context":""}}]
+### EXTRACTION RULES:
+1. **Department**: Extract the organizational unit, team, or business group (e.g., "Finance", "HR", "North Regional Office").
+2. **Application**: Extract the name of any software, tool, database, or system mentioned (e.g., "SAP", "Excel", "Legacy CRM", "SharePoint").
+3. **Relationship**: Briefly describe how they interact (e.g., "uses for reporting", "manages data in", "primary owner").
+4. **Business Context**: Provide 1 sentence of extra detail about why they use it.
 
-If none found return []
+### OUTPUT FORMAT:
+Return ONLY a JSON array. If nothing is found, return [].
+Example:
+[
+  {{"department": "Accounting", "application": "QuickBooks", "relationship": "uses for payroll", "business_context": "Processes monthly salary for 500 employees."}}
+]
 
-Text:
+### TEXT TO ANALYZE:
 {chunk}
 """
 
     client = get_groq_client()
 
     response = client.chat.completions.create(
-        model="openai/gpt-oss-120b",
+        model="llama-3.3-70b-versatile",
         messages=[
+            {"role": "system", "content": "You are a precise data extraction agent. Return only JSON."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0
+        temperature=0.1
     )
 
     content = response.choices[0].message.content

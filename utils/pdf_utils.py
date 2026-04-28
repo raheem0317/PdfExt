@@ -11,5 +11,11 @@ def extract_text_from_pdf(pdf_file):
     return "\n".join(text_parts)
 
 
-def chunk_text(text, chunk_size=2500):
-    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+def chunk_text(text, chunk_size=3000, overlap=300):
+    chunks = []
+    for i in range(0, len(text), chunk_size - overlap):
+        chunk = text[i:i + chunk_size]
+        chunks.append(chunk)
+        if i + chunk_size >= len(text):
+            break
+    return chunks

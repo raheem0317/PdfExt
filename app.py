@@ -117,16 +117,32 @@ def process_pdf_from_path(file_path: str):
 
 def build_dataframe(raw: list, source_label: str) -> pd.DataFrame:
     """Turn raw AI output list into a clean DataFrame."""
+    cols = ["department", "application", "relationship", "business_context"]
     if not raw:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=cols + ["source"])
+    
     df = pd.DataFrame(raw)
-    for col in ["department", "application", "relationship", "business_context"]:
+    for col in cols:
         if col not in df.columns:
             df[col] = "Unknown"
-    df = df.fillna("Unknown")
-    df["department"]  = df["department"].astype(str).str.strip().str[:40]
-    df["application"] = df["application"].astype(str).str.strip().str[:40]
-    df = df.drop_duplicates(subset=["department", "application"])
+    
+    # 1. Clean and Normalize strings
+    for col in ["department", "application"]:
+        df[col] = df[col].astype(str).str.strip().str.title()
+    
+    # 2. Filter out noise (records with no actual application found)
+    noise_values = ["None Mentioned", "None", "Unknown", "N/A", "", "None."]
+    df = df[~df["application"].isin(noise_values)]
+    
+    # 3. Handle duplicates: Group by Dept/App and join contexts if they differ
+    if not df.empty:
+        df = df.groupby(["department", "application"]).agg({
+            "relationship": "first",
+            "business_context": lambda x: " | ".join(set(str(i) for i in x if str(i).lower() != "unknown"))
+        }).reset_index()
+    
+    # Fill remaining blanks
+    df["business_context"] = df["business_context"].replace("", "Details in report")
     df["source"] = source_label
     return df
 
@@ -220,7 +236,7 @@ with tab_pdf1:
         st.warning("No data extracted from PDF 1.")
     else:
         st.markdown('<div class="section-title">Raw Data – PDF 1</div>', unsafe_allow_html=True)
-        st.dataframe(df1.drop(columns=["source"]), use_container_width=True)
+        st.dataframe(df1.drop(columns=["source"]), width="stretch")
 
         c1, c2 = st.columns(2)
         with c1:
@@ -232,7 +248,7 @@ with tab_pdf1:
 
         st.markdown('<div class="section-title">Filter by Department – PDF 1</div>', unsafe_allow_html=True)
         sel1 = st.selectbox("Select department", df1["department"].unique(), key="dep1")
-        st.dataframe(df1[df1["department"] == sel1].drop(columns=["source"]), use_container_width=True)
+        st.dataframe(df1[df1["department"] == sel1].drop(columns=["source"]), width="stretch")
 
 # ── Tab 2: PDF 2 ─────────────────────────────
 with tab_pdf2:
@@ -240,7 +256,7 @@ with tab_pdf2:
         st.warning("No data extracted from PDF 2.")
     else:
         st.markdown('<div class="section-title">Raw Data – PDF 2</div>', unsafe_allow_html=True)
-        st.dataframe(df2.drop(columns=["source"]), use_container_width=True)
+        st.dataframe(df2.drop(columns=["source"]), width="stretch")
 
         c1, c2 = st.columns(2)
         with c1:
@@ -252,18 +268,18 @@ with tab_pdf2:
 
         st.markdown('<div class="section-title">Filter by Department – PDF 2</div>', unsafe_allow_html=True)
         sel2 = st.selectbox("Select department", df2["department"].unique(), key="dep2")
-        st.dataframe(df2[df2["department"] == sel2].drop(columns=["source"]), use_container_width=True)
+        st.dataframe(df2[df2["department"] == sel2].drop(columns=["source"]), width="stretch")
 
 # ── Tab 3: Combined ───────────────────────────
 with tab_combined:
     st.markdown('<div class="section-title">All Records (Both PDFs)</div>', unsafe_allow_html=True)
 
     # Source colour badge in table
-    st.dataframe(combined, use_container_width=True)
+    st.dataframe(combined, width="stretch")
 
     st.markdown('<div class="section-title">Filter by Department (Combined)</div>', unsafe_allow_html=True)
     sel_c = st.selectbox("Select department", combined["department"].unique(), key="depc")
-    st.dataframe(combined[combined["department"] == sel_c], use_container_width=True)
+    st.dataframe(combined[combined["department"] == sel_c], width="stretch")
 
 # ── Tab 4: Comparison ────────────────────────
 with tab_compare:
